@@ -1,0 +1,8 @@
+FROM node:20-slim
+
+WORKDIR /workspaces/mcp-tool-contract
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+CMD ["npm", "run", "start"]

@@ -1,0 +1,27 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "MCP Tool-Contract Audit Output",
+  "description": "Links to the findings dataset and generated report files.",
+  "properties": {
+    "dataset": {
+      "type": "string",
+      "title": "Findings dataset",
+      "template": "{{links.apiDefaultDatasetUrl}}"
+    },
+    "summary": {
+      "type": "string",
+      "title": "SUMMARY report",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY.md"
+    },
+    "sarif": {
+      "type": "string",
+      "title": "SARIF report",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/results.sarif"
+    },
+    "junit": {
+      "type": "string",
+      "title": "JUnit report",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/junit.xml"
+    }
+  }
+}

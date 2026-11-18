@@ -1,0 +1,92 @@
+{
+  "title": "MCP Tool-Contract Auditor Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "targets": {
+      "sectionCaption": "Targets",
+      "title": "Targets",
+      "type": "array",
+      "description": "Remote MCP endpoints, OpenAPI URLs/spec paths, or Apify Actor IDs/URLs to audit. Add at least one target.",
+      "editor": "json",
+      "prefill": [
+        { "type": "openapi", "url": "https://example.com/openapi.json", "name": "Example API" }
+      ],
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["mcp", "openapi", "apify-actor", "auto"], "enumTitles": ["Remote MCP endpoint", "OpenAPI specification", "Apify Actor", "Detect automatically"], "default": "auto" },
+          "url": { "type": "string", "description": "HTTP URL for MCP/OpenAPI or an Apify Actor URL." },
+          "actorId": { "type": "string", "description": "Apify Actor ID or owner/name (used instead of URL when target type is apify-actor)." },
+          "name": { "type": "string", "description": "Optional human-readable label." }
+        },
+        "required": ["type"]
+      }
+    },
+    "checks": {
+      "sectionCaption": "Audit settings",
+      "title": "Checks",
+      "type": "array",
+      "description": "Choose compliance categories to run.",
+      "editor": "json",
+      "default": ["contracts", "agent-ready", "x402", "store", "security"],
+      "items": { "type": "string", "enum": ["contracts", "agent-ready", "x402", "store", "security"] }
+    },
+    "failOn": {
+      "title": "Fail run severity",
+      "type": "string",
+      "description": "Exit with a failed run when findings reach this severity.",
+      "editor": "select",
+      "enum": ["none", "low", "medium", "high", "critical"],
+      "enumTitles": ["Never fail", "Low or above", "Medium or above", "High or above", "Critical only"],
+      "default": "high"
+    },
+    "requestTimeoutSecs": {
+      "title": "Request timeout",
+      "type": "integer",
+      "description": "Maximum seconds to wait for each HTTP request.",
+      "editor": "number",
+      "minimum": 5,
+      "maximum": 120,
+      "default": 30
+    },
+    "maxRedirects": {
+      "title": "Maximum redirects",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 5
+    },
+    "proxyConfiguration": {
+      "sectionCaption": "Network",
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Optional Apify Proxy configuration. Leave as false for direct connections.",
+      "editor": "proxy",
+      "default": false
+    },
+    "exportFormats": {
+      "title": "Export formats",
+      "type": "array",
+      "description": "Reports to write to the Key-Value Store and attach to the run.",
+      "editor": "json",
+      "default": ["summary", "sarif", "junit"],
+      "items": { "type": "string", "enum": ["summary", "sarif", "junit", "json"] }
+    },
+    "includePassingChecks": {
+      "title": "Include passing checks",
+      "type": "boolean",
+      "description": "Include successful checks in the dataset and SUMMARY report.",
+      "default": true
+    },
+    "dryRun": {
+      "title": "Dry run",
+      "type": "boolean",
+      "description": "Validate targets and configuration without making network requests.",
+      "default": false
+    }
+  },
+  "required": ["targets"]
+}

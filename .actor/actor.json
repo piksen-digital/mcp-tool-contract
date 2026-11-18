@@ -1,0 +1,14 @@
+{
+  "actorSpecification": 1,
+  "name": "mcp-tool-contract",
+  "title": "MCP Tool Contract, Agent Readiness & x402 Auditor",
+  "description": "Audits remote MCP endpoints, OpenAPI specs, and Apify Actor schemas for tool contracts, agent readiness, and x402 payment-header compliance.",
+  "version": "0.0",
+  "buildTag": "latest",
+  "dockerfile": "./Dockerfile",
+  "inputSchema": "./input_schema.json",
+  "outputSchema": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  }
+}
