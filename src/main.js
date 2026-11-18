@@ -1,5 +1,6 @@
 import { Actor } from 'apify';
 import yaml from 'js-yaml';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 
 const severityRank = { low: 1, medium: 2, high: 3, critical: 4 };
 
@@ -31,11 +32,11 @@ function inferType(target) {
   return 'openapi';
 }
 
-async function fetchText(url, timeoutMs, maxRedirects) {
+async function fetchText(url, timeoutMs, maxRedirects, fetchImpl = fetch) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { redirect: 'follow', signal: controller.signal });
+    const response = await fetchImpl(url, { redirect: 'follow', signal: controller.signal });
     if (response.status >= 400) throw new Error(`HTTP ${response.status} ${response.statusText}`);
     const text = await response.text();
     return { response, text };
@@ -141,6 +142,27 @@ try {
   const maxRedirects = input.maxRedirects ?? 5;
   const findings = [];
 
+  const ALL_CATEGORIES = ['contracts', 'agent-ready', 'x402', 'store', 'security'];
+  const enabledChecks = new Set(
+    Array.isArray(input.checks) && input.checks.length > 0 ? input.checks : ALL_CATEGORIES
+  );
+  const filterByChecks = (items) =>
+    items.filter((f) => enabledChecks.has(f.category) || f.ruleId === 'TARGET_FETCH_ERROR');
+
+  let fetchImpl = fetch;
+  if (input.proxyConfiguration && Object.keys(input.proxyConfiguration || {}).length > 0) {
+    try {
+      const proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
+      const proxyUrl = proxyConfiguration ? await proxyConfiguration.newUrl() : null;
+      if (proxyUrl) {
+        const dispatcher = new ProxyAgent(proxyUrl);
+        fetchImpl = (url, opts = {}) => undiciFetch(url, { ...opts, dispatcher });
+      }
+    } catch (error) {
+      throw new Error(`Proxy configuration requested but could not be created: ${error.message}`);
+    }
+  }
+
   for (const rawTarget of input.targets) {
     const target = { ...rawTarget, type: inferType(rawTarget) };
     if (input.dryRun) {
@@ -153,7 +175,7 @@ try {
         const actorId = target.actorId || String(target.url || '').split('/').slice(-1)[0];
         if (!actorId) throw new Error('Apify Actor target requires actorId or an Actor URL.');
         const apifyUrl = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}?omit=readme`;
-        const { response, text } = await fetchText(apifyUrl, timeoutMs, maxRedirects);
+        const { response, text } = await fetchText(apifyUrl, timeoutMs, maxRedirects, fetchImpl);
         const actor = JSON.parse(text)?.data || {};
         const passedTitle = Boolean(actor.title);
         const passedDescription = Boolean(actor.description);
@@ -163,7 +185,7 @@ try {
       } else {
         const url = target.url;
         if (!url) throw new Error(`${target.type} target requires url.`);
-        const { response, text } = await fetchText(url, timeoutMs, maxRedirects);
+        const { response, text } = await fetchText(url, timeoutMs, maxRedirects, fetchImpl);
         if (target.type === 'openapi') {
           const spec = parseOpenApi(text);
           auditOpenApi(target, spec, findings);
@@ -182,11 +204,13 @@ try {
     }
   }
 
+  const filteredFindings = filterByChecks(findings);
   const includePassing = input.includePassingChecks !== false;
-  const reportFindings = includePassing ? findings : findings.filter(f => f.status !== 'pass');
-  for (const item of findings) await Actor.pushData(item);
+  const datasetFindings = includePassing ? filteredFindings : filteredFindings.filter(f => f.status !== 'pass');
+  const reportFindings = datasetFindings;
+  for (const item of datasetFindings) await Actor.pushData(item);
 
-  await Actor.setValue('results.json', findings, { contentType: 'application/json' });
+  await Actor.setValue('results.json', filteredFindings, { contentType: 'application/json' });
   if ((input.exportFormats || []).includes('summary')) await Actor.setValue('SUMMARY.md', createSummary(reportFindings), { contentType: 'text/markdown' });
   if ((input.exportFormats || []).includes('sarif')) await Actor.setValue('results.sarif', createSarif(reportFindings), { contentType: 'application/sarif+json' });
   if ((input.exportFormats || []).includes('junit')) await Actor.setValue('junit.xml', createJUnit(reportFindings), { contentType: 'application/xml' });
@@ -195,15 +219,15 @@ try {
 
   await Actor.setValue('OUTPUT', {
     summary: 'SUMMARY.md',
-    findingsCount: findings.length,
-    passed: findings.filter(f => f.status === 'pass').length,
-    warnings: findings.filter(f => f.status === 'warn').length,
-    failures: findings.filter(f => f.status === 'fail').length,
+    findingsCount: filteredFindings.length,
+    passed: filteredFindings.filter(f => f.status === 'pass').length,
+    warnings: filteredFindings.filter(f => f.status === 'warn').length,
+    failures: filteredFindings.filter(f => f.status === 'fail').length,
   });
 
   const failThreshold = input.failOn || 'high';
   const failRank = severityRank[failThreshold] || 3;
-  const shouldFail = failThreshold !== 'none' && findings.some(f => f.status === 'fail' && severityRank[f.severity] >= failRank);
+  const shouldFail = failThreshold !== 'none' && filteredFindings.some(f => f.status === 'fail' && severityRank[f.severity] >= failRank);
   if (shouldFail) throw new Error(`Audit failed because one or more findings reached ${failThreshold} severity.`);
 
   await Actor.exit();

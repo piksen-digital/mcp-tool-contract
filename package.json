@@ -15,10 +15,11 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "apify": "^3.4.5",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "js-yaml": "^4.1.0"
+    "apify": "^3.4.5",
+    "js-yaml": "^4.1.0",
+    "undici": "^6.29.1"
   },
   "overrides": {
     "basic-ftp": "6.2.4"
