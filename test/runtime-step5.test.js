@@ -15,8 +15,10 @@ test("runtime imports undici ProxyAgent and fetch", () => {
 });
 
 test("fetchText routes through an injectable fetchImpl", () => {
-  assert.match(src, /async function fetchText\(url, timeoutMs, maxRedirects, fetchImpl = fetch\)/);
-  assert.match(src, /await fetchImpl\(url/);
+  const fetchSrc = fs.readFileSync("src/fetch.js", "utf8");
+  assert.match(src, /from '\.\/fetch\.js'/);
+  assert.match(fetchSrc, /async function fetchText\(url, timeoutMs, maxRedirects, fetchImpl = fetch\)/);
+  assert.match(fetchSrc, /await fetchImpl\(currentUrl/);
 });
 
 test("proxyConfiguration is converted to a ProxyAgent dispatcher", () => {

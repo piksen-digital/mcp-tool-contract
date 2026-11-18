@@ -1,6 +1,7 @@
 import { Actor } from 'apify';
 import yaml from 'js-yaml';
 import { ProxyAgent, fetch as undiciFetch } from 'undici';
+import { fetchText } from './fetch.js';
 
 const severityRank = { low: 1, medium: 2, high: 3, critical: 4 };
 
@@ -32,18 +33,6 @@ function inferType(target) {
   return 'openapi';
 }
 
-async function fetchText(url, timeoutMs, maxRedirects, fetchImpl = fetch) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetchImpl(url, { redirect: 'follow', signal: controller.signal });
-    if (response.status >= 400) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-    const text = await response.text();
-    return { response, text };
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function parseOpenApi(text) {
   const trimmed = text.trim();
