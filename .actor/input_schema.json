@@ -9,20 +9,101 @@
       "type": "array",
       "description": "Add one or more MCP endpoints, OpenAPI specifications, or Apify Actors.",
       "editor": "json",
-      "prefill": [{ "type": "openapi", "url": "https://example.com/openapi.json", "name": "Example API" }],
+      "prefill": [
+        {
+          "type": "openapi",
+          "url": "https://example.com/openapi.json",
+          "name": "Example API"
+        }
+      ],
       "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "type": { "type": "string", "title": "Target type", "enum": ["mcp", "openapi", "apify-actor", "auto"], "enumTitles": ["Remote MCP endpoint", "OpenAPI specification", "Apify Actor", "Detect automatically"], "default": "auto" },
-          "url": { "type": "string", "title": "URL", "description": "Full HTTP or HTTPS URL for an MCP or OpenAPI target." },
-          "actorId": { "type": "string", "title": "Actor ID", "description": "An Actor ID or owner/name. Used for Apify Actor targets." },
-          "name": { "type": "string", "title": "Display name", "description": "Optional label used in reports." }
+          "type": {
+            "type": "string",
+            "title": "Target type",
+            "enum": [
+              "mcp",
+              "openapi",
+              "apify-actor"
+            ],
+            "enumTitles": [
+              "Remote MCP endpoint",
+              "OpenAPI specification",
+              "Apify Actor"
+            ],
+            "default": "openapi"
+          },
+          "url": {
+            "type": "string",
+            "title": "URL",
+            "description": "Full HTTP or HTTPS URL for an MCP or OpenAPI target.",
+            "format": "uri",
+            "pattern": "^https?://\\S+$",
+            "maxLength": 2048
+          },
+          "actorId": {
+            "type": "string",
+            "title": "Actor ID",
+            "description": "An Actor ID or owner/name. Used for Apify Actor targets.",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}(/[A-Za-z0-9][A-Za-z0-9_.-]{0,99})?$",
+            "maxLength": 201
+          },
+          "name": {
+            "type": "string",
+            "title": "Display name",
+            "description": "Optional label used in reports.",
+            "minLength": 1,
+            "maxLength": 200
+          }
         },
-        "required": ["type"]
-      }
+        "required": [
+          "type"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "mcp",
+                    "openapi"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "url"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "apify-actor"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "required": [
+                "actorId"
+              ]
+            }
+          }
+        ]
+      },
+      "maxItems": 50
     },
     "checks": {
       "sectionCaption": "2. Audit scope",
@@ -31,8 +112,31 @@
       "description": "Choose the compliance categories to run.",
       "editor": "json",
       "uniqueItems": true,
-      "default": ["contracts", "agent-ready", "x402", "store", "security"],
-      "items": { "type": "string", "enum": ["contracts", "agent-ready", "x402", "store", "security"], "enumTitles": ["Tool contracts", "Agent readiness", "x402 payments", "Store metadata", "Security"] }
+      "default": [
+        "contracts",
+        "agent-ready",
+        "x402",
+        "store",
+        "security"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "contracts",
+          "agent-ready",
+          "x402",
+          "store",
+          "security"
+        ],
+        "enumTitles": [
+          "Tool contracts",
+          "Agent readiness",
+          "x402 payments",
+          "Store metadata",
+          "Security"
+        ]
+      },
+      "minItems": 1
     },
     "failOn": {
       "sectionCaption": "3. CI behavior",
@@ -40,18 +144,41 @@
       "type": "string",
       "description": "Return a non-zero exit code when findings reach this severity.",
       "editor": "select",
-      "enum": ["none", "low", "medium", "high", "critical"],
-      "enumTitles": ["Never fail", "Low or above", "Medium or above", "High or above", "Critical only"],
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "enumTitles": [
+        "Never fail",
+        "Low or above",
+        "Medium or above",
+        "High or above",
+        "Critical only"
+      ],
       "default": "high"
     },
     "exportFormats": {
       "title": "Report formats",
       "type": "array",
-      "description": "Reports written to the Key-Value Store.",
+      "description": "Additional report formats to write to the Key-Value Store. A machine-readable 'results.json' findings record is always written, regardless of this selection.",
       "editor": "json",
       "uniqueItems": true,
-      "default": ["summary", "sarif", "junit"],
-      "items": { "type": "string", "enum": ["summary", "sarif", "junit", "json"] }
+      "default": [
+        "summary",
+        "sarif",
+        "junit"
+      ],
+      "items": {
+        "type": "string",
+        "enum": [
+          "summary",
+          "sarif",
+          "junit"
+        ]
+      }
     },
     "requestTimeoutSecs": {
       "sectionCaption": "4. Network",
@@ -90,5 +217,8 @@
       "default": false
     }
   },
-  "required": ["targets"]
+  "required": [
+    "targets"
+  ],
+  "additionalProperties": false
 }

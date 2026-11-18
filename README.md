@@ -38,7 +38,7 @@ This Actor audits remote MCP endpoints, OpenAPI 3.0/3.1 specifications, and publ
   ],
   "checks": ["contracts", "agent-ready", "x402", "store", "security"],
   "failOn": "high",
-  "exportFormats": ["summary", "sarif", "junit", "json"],
+  "exportFormats": ["summary", "sarif", "junit"],
   "requestTimeoutSecs": 30,
   "includePassingChecks": true,
   "dryRun": false
