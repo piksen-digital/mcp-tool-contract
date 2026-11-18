@@ -1,17 +1,23 @@
 {
   "name": "mcp-tool-contract",
+  "version": "0.0.0",
+  "description": "Audits MCP endpoints, OpenAPI specifications, and Apify Actors for tool-contract and agent-readiness compliance.",
+  "private": true,
+  "type": "module",
+  "main": "src/main.js",
   "scripts": {
     "start": "node src/main.js",
     "test": "node --test test/*.test.js",
-    "build": "node scripts/build-check.js"
+    "build": "node scripts/build-check.js",
+    "check": "npm test && npm run build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "apify": "^3.4.5",
     "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "js-yaml": "^4.1.0"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "devDependencies": {}
+  }
 }

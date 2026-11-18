@@ -4,49 +4,59 @@
   "schemaVersion": 1,
   "properties": {
     "targets": {
-      "sectionCaption": "Targets",
+      "sectionCaption": "1. Targets",
       "title": "Targets",
       "type": "array",
-      "description": "Remote MCP endpoints, OpenAPI URLs/spec paths, or Apify Actor IDs/URLs to audit. Add at least one target.",
+      "description": "Add one or more MCP endpoints, OpenAPI specifications, or Apify Actors.",
       "editor": "json",
-      "prefill": [
-        { "type": "openapi", "url": "https://example.com/openapi.json", "name": "Example API" }
-      ],
+      "prefill": [{ "type": "openapi", "url": "https://example.com/openapi.json", "name": "Example API" }],
       "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "type": { "type": "string", "enum": ["mcp", "openapi", "apify-actor", "auto"], "enumTitles": ["Remote MCP endpoint", "OpenAPI specification", "Apify Actor", "Detect automatically"], "default": "auto" },
-          "url": { "type": "string", "description": "HTTP URL for MCP/OpenAPI or an Apify Actor URL." },
-          "actorId": { "type": "string", "description": "Apify Actor ID or owner/name (used instead of URL when target type is apify-actor)." },
-          "name": { "type": "string", "description": "Optional human-readable label." }
+          "type": { "type": "string", "title": "Target type", "enum": ["mcp", "openapi", "apify-actor", "auto"], "enumTitles": ["Remote MCP endpoint", "OpenAPI specification", "Apify Actor", "Detect automatically"], "default": "auto" },
+          "url": { "type": "string", "title": "URL", "description": "Full HTTP or HTTPS URL for an MCP or OpenAPI target." },
+          "actorId": { "type": "string", "title": "Actor ID", "description": "An Actor ID or owner/name. Used for Apify Actor targets." },
+          "name": { "type": "string", "title": "Display name", "description": "Optional label used in reports." }
         },
         "required": ["type"]
       }
     },
     "checks": {
-      "sectionCaption": "Audit settings",
+      "sectionCaption": "2. Audit scope",
       "title": "Checks",
       "type": "array",
-      "description": "Choose compliance categories to run.",
+      "description": "Choose the compliance categories to run.",
       "editor": "json",
+      "uniqueItems": true,
       "default": ["contracts", "agent-ready", "x402", "store", "security"],
-      "items": { "type": "string", "enum": ["contracts", "agent-ready", "x402", "store", "security"] }
+      "items": { "type": "string", "enum": ["contracts", "agent-ready", "x402", "store", "security"], "enumTitles": ["Tool contracts", "Agent readiness", "x402 payments", "Store metadata", "Security"] }
     },
     "failOn": {
-      "title": "Fail run severity",
+      "sectionCaption": "3. CI behavior",
+      "title": "Fail run at severity",
       "type": "string",
-      "description": "Exit with a failed run when findings reach this severity.",
+      "description": "Return a non-zero exit code when findings reach this severity.",
       "editor": "select",
       "enum": ["none", "low", "medium", "high", "critical"],
       "enumTitles": ["Never fail", "Low or above", "Medium or above", "High or above", "Critical only"],
       "default": "high"
     },
+    "exportFormats": {
+      "title": "Report formats",
+      "type": "array",
+      "description": "Reports written to the Key-Value Store.",
+      "editor": "json",
+      "uniqueItems": true,
+      "default": ["summary", "sarif", "junit"],
+      "items": { "type": "string", "enum": ["summary", "sarif", "junit", "json"] }
+    },
     "requestTimeoutSecs": {
-      "title": "Request timeout",
+      "sectionCaption": "4. Network",
+      "title": "Request timeout (seconds)",
       "type": "integer",
-      "description": "Maximum seconds to wait for each HTTP request.",
       "editor": "number",
       "minimum": 5,
       "maximum": 120,
@@ -55,25 +65,17 @@
     "maxRedirects": {
       "title": "Maximum redirects",
       "type": "integer",
+      "editor": "number",
       "minimum": 0,
       "maximum": 10,
       "default": 5
     },
     "proxyConfiguration": {
-      "sectionCaption": "Network",
       "title": "Proxy configuration",
       "type": "object",
-      "description": "Optional Apify Proxy configuration. Leave as false for direct connections.",
+      "description": "Leave disabled for direct connections.",
       "editor": "proxy",
       "default": false
-    },
-    "exportFormats": {
-      "title": "Export formats",
-      "type": "array",
-      "description": "Reports to write to the Key-Value Store and attach to the run.",
-      "editor": "json",
-      "default": ["summary", "sarif", "junit"],
-      "items": { "type": "string", "enum": ["summary", "sarif", "junit", "json"] }
     },
     "includePassingChecks": {
       "title": "Include passing checks",
@@ -84,7 +86,7 @@
     "dryRun": {
       "title": "Dry run",
       "type": "boolean",
-      "description": "Validate targets and configuration without making network requests.",
+      "description": "Validate targets without making network requests.",
       "default": false
     }
   },

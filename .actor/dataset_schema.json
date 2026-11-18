@@ -20,15 +20,7 @@
     }
   },
   "views": {
-    "overview": {
-      "title": "Audit overview",
-      "transformation": { "fields": ["severity", "status", "category", "targetName", "ruleId", "title", "message"] },
-      "display": { "component": "table" }
-    },
-    "failures": {
-      "title": "Failures",
-      "transformation": { "fields": ["severity", "category", "targetName", "ruleId", "message", "remediation"] },
-      "display": { "component": "table" }
-    }
+    "overview": { "title": "Audit overview", "transformation": { "fields": ["severity", "status", "category", "targetName", "ruleId", "title", "message"] }, "display": { "component": "table" } },
+    "failures": { "title": "Failures", "transformation": { "fields": ["severity", "category", "targetName", "ruleId", "message", "remediation"] }, "display": { "component": "table" } }
   }
 }
