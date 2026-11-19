@@ -1,15 +1,169 @@
 {
+  "$schema": "https://apify.com",
   "actorSpecification": 1,
   "name": "mcp-tool-contract",
   "title": "MCP Tool Contract, Agent Readiness & x402 Auditor",
   "description": "Audits MCP endpoints, OpenAPI specifications, and Apify Actors for tool contracts, agent readiness, x402 payment requirements, Store metadata, and security risks.",
   "version": "0.0",
   "buildTag": "latest",
-  "dockerfile": "./Dockerfile",
+  "defaultMemoryMbytes": 2048,
+  "minMemoryMbytes": 1024,
+  "maxMemoryMbytes": 8192,
   "readme": "../README.md",
-  "inputSchema": "./input_schema.json",
+  "dockerfile": "../Dockerfile",
   "outputSchema": "./output_schema.json",
   "storages": {
     "dataset": "./dataset_schema.json"
+  },
+  "inputSchema": {
+    "title": "MCP Tool-Contract Auditor Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "targets": {
+        "sectionCaption": "1. Targets",
+        "title": "Targets",
+        "type": "array",
+        "description": "Add one or more MCP endpoints, OpenAPI specifications, or Apify Actors.",
+        "editor": "schemaBased",
+        "minItems": 1,
+        "uniqueItems": true,
+        "errorMessage": {
+          "minItems": "You must provide at least one target to audit."
+        },
+        "prefill": [
+          {
+            "type": "openapi",
+            "url": "https://example.com/openapi.json",
+            "name": "Example API"
+          }
+        ],
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "title": "Target type",
+              "enum": ["mcp", "openapi", "apify-actor"],
+              "enumTitles": ["Remote MCP endpoint", "OpenAPI specification", "Apify Actor"],
+              "default": "openapi",
+              "description": "The kind of target to audit: a remote MCP endpoint, an OpenAPI specification, or an Apify Actor."
+            },
+            "url": {
+              "type": "string",
+              "title": "URL",
+              "description": "Full HTTP or HTTPS URL for an MCP or OpenAPI target.",
+              "pattern": "^https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/\\S*)?$",
+              "maxLength": 2048,
+              "errorMessage": {
+                "pattern": "URL must start with http:// or https:// and include a valid domain."
+              }
+            },
+            "actorId": {
+              "type": "string",
+              "title": "Actor ID",
+              "description": "An Actor ID or owner/name. Used for Apify Actor targets.",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$",
+              "maxLength": 201,
+              "errorMessage": {
+                "pattern": "Invalid Actor ID format! Must include both the username and name separated by a slash (e.g., apify/website-content-crawler)."
+              }
+            },
+            "name": {
+              "type": "string",
+              "title": "Display name",
+              "description": "Optional label used in generated reports.",
+              "minLength": 1,
+              "maxLength": 200,
+              "errorMessage": {
+                "minLength": "Display name cannot be empty if specified."
+              }
+            }
+          },
+          "required": ["type"]
+        },
+        "maxItems": 50
+      },
+      "checks": {
+        "sectionCaption": "2. Audit scope",
+        "title": "Checks",
+        "type": "array",
+        "description": "Choose the compliance categories to run.",
+        "editor": "select",
+        "uniqueItems": true,
+        "default": ["contracts", "agent-ready", "x402", "store", "security"],
+        "items": {
+          "type": "string",
+          "enum": ["contracts", "agent-ready", "x402", "store", "security"],
+          "enumTitles": ["Tool contracts", "Agent readiness", "x402 payments", "Store metadata", "Security"]
+        },
+        "minItems": 1,
+        "errorMessage": {
+          "minItems": "Please select at least one audit scope category check to execute."
+        }
+      },
+      "failOn": {
+        "sectionCaption": "3. CI behavior",
+        "title": "Fail run at severity",
+        "type": "string",
+        "description": "Return a non-zero exit code when findings reach this severity.",
+        "editor": "select",
+        "enum": ["none", "low", "medium", "high", "critical"],
+        "enumTitles": ["Never fail (Always succeed green)", "Low or above", "Medium or above", "High or above", "Critical only"],
+        "default": "none"
+      },
+      "exportFormats": {
+        "title": "Report formats",
+        "type": "array",
+        "description": "Additional report formats to write to the Key-Value Store.",
+        "editor": "select",
+        "uniqueItems": true,
+        "default": ["summary", "sarif", "junit"],
+        "items": {
+          "type": "string",
+          "enum": ["summary", "sarif", "junit"]
+        }
+      },
+      "requestTimeoutSecs": {
+        "sectionCaption": "4. Network",
+        "title": "Request timeout (seconds)",
+        "type": "integer",
+        "editor": "number",
+        "minimum": 5,
+        "maximum": 120,
+        "default": 30,
+        "description": "Maximum time to wait for each network request, in seconds."
+      },
+      "maxRedirects": {
+        "title": "Maximum redirects",
+        "type": "integer",
+        "editor": "number",
+        "minimum": 0,
+        "maximum": 10,
+        "default": 5,
+        "description": "Maximum number of HTTP redirects to follow before failing the request."
+      },
+      "proxyConfiguration": {
+        "title": "Proxy configuration",
+        "type": "object",
+        "editor": "proxy",
+        "description": "Proxy servers used by the Actor to hide its origin IP. Leave disabled for direct connections."
+      },
+      "includePassingChecks": {
+        "title": "Include passing checks",
+        "type": "boolean",
+        "default": true,
+        "description": "Include successful checks in the dataset and SUMMARY report alongside warnings and errors."
+      },
+      "dryRun": {
+        "title": "Dry run",
+        "type": "boolean",
+        "default": false,
+        "description": "Validate configurations, pathing formats, and fields without executing external network calls."
+      }
+    },
+    "required": ["targets"],
+    "additionalProperties": false
   }
 }

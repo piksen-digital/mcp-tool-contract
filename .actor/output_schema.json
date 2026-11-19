@@ -2,10 +2,10 @@
   "actorOutputSchemaVersion": 1,
   "title": "MCP Tool-Contract Audit Output",
   "properties": {
-    "dataset": { "title": "Findings dataset", "template": "{{links.apiDefaultDatasetUrl}}" },
-    "summary": { "title": "SUMMARY report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY.md" },
-    "sarif": { "title": "SARIF report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/results.sarif" },
-    "junit": { "title": "JUnit report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/junit.xml" },
-    "json": { "title": "JSON findings", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/results.json" }
+    "dataset": { "type": "string", "title": "Findings dataset", "template": "{{links.apiDefaultDatasetUrl}}" },
+    "summary": { "type": "string", "title": "SUMMARY report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY.md" },
+    "sarif": { "type": "string", "title": "SARIF report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/results.sarif" },
+    "junit": { "type": "string", "title": "JUnit report", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/junit.xml" },
+    "json": { "type": "string", "title": "JSON findings", "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/results.json" }
   }
 }

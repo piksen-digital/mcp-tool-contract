@@ -35,13 +35,13 @@
               "OpenAPI specification",
               "Apify Actor"
             ],
-            "default": "openapi"
+            "default": "openapi",
+            "description": "The kind of target to audit: a remote MCP endpoint, an OpenAPI specification, or an Apify Actor."
           },
           "url": {
             "type": "string",
             "title": "URL",
             "description": "Full HTTP or HTTPS URL for an MCP or OpenAPI target.",
-            "format": "uri",
             "pattern": "^https?://\\S+$",
             "maxLength": 2048
           },
@@ -60,48 +60,7 @@
             "maxLength": 200
           }
         },
-        "required": [
-          "type"
-        ],
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "type": {
-                  "enum": [
-                    "mcp",
-                    "openapi"
-                  ]
-                }
-              },
-              "required": [
-                "type"
-              ]
-            },
-            "then": {
-              "required": [
-                "url"
-              ]
-            }
-          },
-          {
-            "if": {
-              "properties": {
-                "type": {
-                  "const": "apify-actor"
-                }
-              },
-              "required": [
-                "type"
-              ]
-            },
-            "then": {
-              "required": [
-                "actorId"
-              ]
-            }
-          }
-        ]
+        "required": ["type"]
       },
       "maxItems": 50
     },
@@ -110,7 +69,7 @@
       "title": "Checks",
       "type": "array",
       "description": "Choose the compliance categories to run.",
-      "editor": "json",
+      "editor": "select",
       "uniqueItems": true,
       "default": [
         "contracts",
@@ -164,7 +123,7 @@
       "title": "Report formats",
       "type": "array",
       "description": "Additional report formats to write to the Key-Value Store. A machine-readable 'results.json' findings record is always written, regardless of this selection.",
-      "editor": "json",
+      "editor": "select",
       "uniqueItems": true,
       "default": [
         "summary",
@@ -187,7 +146,8 @@
       "editor": "number",
       "minimum": 5,
       "maximum": 120,
-      "default": 30
+      "default": 30,
+      "description": "Maximum time to wait for each network request, in seconds."
     },
     "maxRedirects": {
       "title": "Maximum redirects",
@@ -195,14 +155,14 @@
       "editor": "number",
       "minimum": 0,
       "maximum": 10,
-      "default": 5
+      "default": 5,
+      "description": "Maximum number of HTTP redirects to follow before failing the request."
     },
     "proxyConfiguration": {
       "title": "Proxy configuration",
       "type": "object",
       "description": "Leave disabled for direct connections.",
-      "editor": "proxy",
-      "default": false
+      "editor": "proxy"
     },
     "includePassingChecks": {
       "title": "Include passing checks",
