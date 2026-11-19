@@ -4,6 +4,7 @@ import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { fetchText } from './fetch.js';
 
 const severityRank = { low: 1, medium: 2, high: 3, critical: 4 };
+const ALL_CATEGORIES = ['contracts', 'agent-ready', 'x402', 'store', 'security'];
 
 function finding(target, category, severity, status, ruleId, title, message, evidence = {}, remediation = '', docsUrl = '') {
   return {
@@ -32,7 +33,6 @@ function inferType(target) {
   if (target.actorId || /^[^/]+\/[^/]+$/.test(value)) return 'apify-actor';
   return 'openapi';
 }
-
 
 function parseOpenApi(text) {
   const trimmed = text.trim();
@@ -75,10 +75,10 @@ function auditOpenApi(target, spec, findings) {
 function auditMcpHeaders(target, response, text, findings) {
   const paymentRequired = response.headers.get('payment-required');
   const x402 = response.headers.has('payment-required') || /x402|PAYMENT-REQUIRED/i.test(text);
-  findings.push(finding(target, 'x402', x402 ? 'low' : 'medium', x402 ? 'pass' : 'warn', 'X402_DECLARATION', 'x402 declaration', x402 ? 'An x402 payment declaration was detected.' : 'No x402 payment declaration was detected.', { x402, paymentRequired: paymentRequired || null }, x402 ? '' : 'Declare PAYMENT-REQUIRED using the x402 protocol when a paid tool is invoked.'));
+  findings.push(finding(target, 'x402', x402 ? 'low' : 'medium', x402 ? 'pass' : 'warn', 'X402_DECLARATION', 'x402 declaration', x402 ? 'An x402 payment declaration was detected.' : 'No x402 payment declaration was detected.', { x402, paymentRequired: paymentRequired || null }, x402 ? '' : 'Declare PAYMENT-REQUIRED when paid premium tool logic triggers.'));
 
   const contentType = response.headers.get('content-type') || '';
-  findings.push(finding(target, 'contracts', contentType.includes('application/json') || contentType.includes('text/event-stream') ? 'low' : 'medium', contentType.includes('application/json') || contentType.includes('text/event-stream') ? 'pass' : 'warn', 'MCP_CONTENT_TYPE', 'MCP response content type', `Content-Type: ${contentType || 'missing'}`, { contentType }, 'Use application/json or text/event-stream for MCP HTTP transport.'));
+  findings.push(finding(target, 'contracts', contentType.includes('application/json') || contentType.includes('text/event-stream') ? 'low' : 'medium', contentType.includes('application/json') || contentType.includes('text/event-stream') ? 'pass' : 'warn', 'MCP_CONTENT_TYPE', 'MCP response content type', `Content-Type: ${contentType || 'missing'}`, { contentType }, 'Use application/json transport endpoints.'));
 }
 
 function auditMcpToolList(target, payload, findings) {
@@ -92,7 +92,6 @@ function auditMcpToolList(target, payload, findings) {
     if (!tool.name) findings.push(finding(target, 'contracts', 'high', 'fail', 'MCP_TOOL_NAME', label, 'A tool has no name.', { tool }, 'Assign a stable tool name.'));
     if (!tool.description) findings.push(finding(target, 'agent-ready', 'medium', 'fail', 'MCP_TOOL_DESCRIPTION', label, 'A tool description is missing.', { tool }, 'Describe the tool action, inputs, outputs, and limitations.'));
     if (!tool.inputSchema) findings.push(finding(target, 'contracts', 'high', 'fail', 'MCP_INPUT_SCHEMA', label, 'A tool is missing an inputSchema.', { tool }, 'Define a JSON Schema input contract.'));
-    if (tool.annotations?.readOnlyHint === true && tool.annotations?.openWorldHint === true) findings.push(finding(target, 'agent-ready', 'medium', 'warn', 'MCP_HINT_CONFLICT', label, 'The tool is marked read-only and open-world.', { annotations: tool.annotations }, 'Verify readOnlyHint and openWorldHint describe the actual side effects and external reachability.'));
   }
 }
 
@@ -107,7 +106,25 @@ function createSummary(findings) {
 function createSarif(findings) {
   return {
     version: '2.1.0',
-    runs: [{ tool: { driver: { name: 'MCP Tool-Contract Auditor', informationUri: 'https://docs.apify.com', rules: findings.map(f => ({ id: f.ruleId, name: f.ruleId, shortDescription: { text: f.title }, helpUri: f.docsUrl || undefined, defaultConfiguration: { level: f.severity === 'high' || f.severity === 'critical' ? 'error' : 'warning' } })) } }, results: findings.filter(f => f.status !== 'pass').map(f => ({ ruleId: f.ruleId, level: f.severity === 'critical' || f.severity === 'high' ? 'error' : 'warning', message: { text: f.message }, properties: { category: f.category, target: f.targetName } })) }]
+    runs: [{
+      tool: {
+        driver: {
+          name: 'MCP Tool-Contract Auditor',
+          rules: findings.map(f => ({
+            id: f.ruleId,
+            name: f.ruleId,
+            shortDescription: { text: f.title },
+            helpUri: f.docsUrl || undefined,
+          })),
+        },
+      },
+      results: findings.filter(f => f.status !== 'pass').map(f => ({
+        ruleId: f.ruleId,
+        level: f.severity === 'critical' || f.severity === 'high' ? 'error' : 'warning',
+        message: { text: f.message },
+        properties: { category: f.category, target: f.targetName },
+      })),
+    }],
   };
 }
 
@@ -121,6 +138,30 @@ function createJUnit(findings) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="mcp-tool-contract" tests="${tests}" failures="${failures.length}" errors="0">\n${findings.filter(f => f.status !== 'pass').map(f => `  <testcase classname="${escapeXml(f.category)}" name="${escapeXml(`${f.targetName}: ${f.ruleId}`)}"><failure type="${escapeXml(f.severity)}" message="${escapeXml(f.message)}">${escapeXml(f.remediation)}</failure></testcase>`).join('\n')}\n</testsuite>\n`;
 }
 
+function validateTarget(target) {
+  if (!target || typeof target !== 'object' || Array.isArray(target)) {
+    return 'Each target must be a JSON object.';
+  }
+  if (!['mcp', 'openapi', 'apify-actor'].includes(target.type)) {
+    return 'Target type must be mcp, openapi, or apify-actor.';
+  }
+  if (target.type === 'apify-actor') {
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/.test(target.actorId || '')) {
+      return 'Apify Actor targets require an owner/name Actor ID, for example apify/website-content-crawler.';
+    }
+  } else {
+    try {
+      const url = new URL(target.url || '');
+      if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
+        return 'MCP and OpenAPI targets require a complete http:// or https:// URL.';
+      }
+    } catch {
+      return 'MCP and OpenAPI targets require a complete http:// or https:// URL.';
+    }
+  }
+  return '';
+}
+
 await Actor.init();
 
 try {
@@ -131,15 +172,14 @@ try {
   const maxRedirects = input.maxRedirects ?? 5;
   const findings = [];
 
-  const ALL_CATEGORIES = ['contracts', 'agent-ready', 'x402', 'store', 'security'];
   const enabledChecks = new Set(
     Array.isArray(input.checks) && input.checks.length > 0 ? input.checks : ALL_CATEGORIES
   );
-  const filterByChecks = (items) =>
-    items.filter((f) => enabledChecks.has(f.category) || f.ruleId === 'TARGET_FETCH_ERROR');
+  const filterByChecks = items =>
+    items.filter(f => enabledChecks.has(f.category) || f.ruleId === 'TARGET_FETCH_ERROR');
 
   let fetchImpl = fetch;
-  if (input.proxyConfiguration && Object.keys(input.proxyConfiguration || {}).length > 0) {
+  if (input.proxyConfiguration && Object.keys(input.proxyConfiguration).length > 0) {
     try {
       const proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
       const proxyUrl = proxyConfiguration ? await proxyConfiguration.newUrl() : null;
@@ -154,6 +194,11 @@ try {
 
   for (const rawTarget of input.targets) {
     const target = { ...rawTarget, type: inferType(rawTarget) };
+    const targetError = validateTarget(target);
+    if (targetError) {
+      findings.push(finding(target, 'security', 'high', 'fail', 'INVALID_TARGET_INPUT', 'Invalid target input', targetError, { target }, 'Correct the target fields, then start the run again.'));
+      continue;
+    }
     if (input.dryRun) {
       findings.push(finding(target, 'contracts', 'low', 'pass', 'DRY_RUN_TARGET', 'Dry-run validation', 'Target structure is valid; network access was skipped.', { target }));
       continue;
@@ -161,20 +206,18 @@ try {
 
     try {
       if (target.type === 'apify-actor') {
-        const actorId = target.actorId || String(target.url || '').split('/').slice(-1)[0];
-        if (!actorId) throw new Error('Apify Actor target requires actorId or an Actor URL.');
-        const apifyUrl = `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}?omit=readme`;
-        const { response, text } = await fetchText(apifyUrl, timeoutMs, maxRedirects, fetchImpl);
+        if (!target.actorId) throw new Error('Apify Actor target requires an owner/name Actor ID.');
+        const apifyUrl = `https://api.apify.com/v2/acts/${encodeURIComponent(target.actorId)}?omit=readme`;
+        const { text } = await fetchText(apifyUrl, timeoutMs, maxRedirects, fetchImpl);
         const actor = JSON.parse(text)?.data || {};
         const passedTitle = Boolean(actor.title);
         const passedDescription = Boolean(actor.description);
         const passedInput = Boolean(actor.inputSchema);
-        findings.push(finding(target, 'store', passedDescription && passedTitle ? 'low' : 'medium', passedDescription && passedTitle ? 'pass' : 'fail', 'ACTOR_STORE_METADATA', 'Actor Store metadata', 'Checked Actor title and description.', { title: actor.title, descriptionPresent: passedDescription, titlePresent: passedTitle }, 'Complete title, description, and KYC/safety settings in Apify Console.'));
+        findings.push(finding(target, 'store', passedDescription && passedTitle ? 'low' : 'medium', passedDescription && passedTitle ? 'pass' : 'fail', 'ACTOR_STORE_METADATA', 'Actor Store metadata', 'Checked Actor title and description.', { title: actor.title, descriptionPresent: passedDescription, titlePresent: passedTitle }, 'Complete title and description in Apify Console.'));
         findings.push(finding(target, 'contracts', passedInput ? 'low' : 'high', passedInput ? 'pass' : 'fail', 'ACTOR_INPUT_SCHEMA', 'Actor input schema', 'Checked whether an input schema is published.', { inputSchemaPresent: passedInput }, 'Publish an input schema and use constrained JSON Schema fields.'));
       } else {
-        const url = target.url;
-        if (!url) throw new Error(`${target.type} target requires url.`);
-        const { response, text } = await fetchText(url, timeoutMs, maxRedirects, fetchImpl);
+        if (!target.url) throw new Error(`${target.type} target requires a URL.`);
+        const { response, text } = await fetchText(target.url, timeoutMs, maxRedirects, fetchImpl);
         if (target.type === 'openapi') {
           const spec = parseOpenApi(text);
           auditOpenApi(target, spec, findings);
@@ -184,27 +227,29 @@ try {
             const payload = JSON.parse(text);
             auditMcpToolList(target, payload, findings);
           } catch {
-            findings.push(finding(target, 'contracts', 'high', 'warn', 'MCP_RESPONSE_FORMAT', 'MCP response format', 'The endpoint did not return immediately parseable JSON; it may require a JSON-RPC POST.', { contentType: response.headers.get('content-type') }, 'Call tools/list using the MCP JSON-RPC transport or MCP Streamable HTTP protocol.'));
+            findings.push(finding(target, 'contracts', 'high', 'warn', 'MCP_RESPONSE_FORMAT', 'MCP response format', 'The endpoint did not return immediately parseable JSON; it may require the MCP JSON-RPC POST transport.', { contentType: response.headers.get('content-type') }, 'Call tools/list using the MCP JSON-RPC transport or MCP Streamable HTTP protocol.'));
           }
         }
       }
     } catch (error) {
-      findings.push(finding(target, 'security', 'critical', 'fail', 'TARGET_FETCH_ERROR', 'Target could not be audited', error.message, {}, 'Verify the URL, transport, authentication, redirects, and network access.'));
+      let remediation = 'Verify the URL, transport, authentication, redirects, and network access.';
+      if (/404|not found/i.test(error.message)) remediation = 'The target could not be found. Check that the URL path is correct and the file or endpoint has not moved.';
+      if (/401|403|unauthorized|forbidden/i.test(error.message)) remediation = 'The target rejected access. Configure valid authentication or use a publicly accessible endpoint.';
+      if (/timeout|timed out/i.test(error.message)) remediation = 'The server did not respond before the timeout. Check network connectivity or increase Request timeout.';
+      console.error(`Target audit failed (${target.url || target.actorId}): ${error.message}`);
+      findings.push(finding(target, 'security', 'critical', 'fail', 'TARGET_FETCH_ERROR', 'Target could not be audited', error.message, { targetUrl: target.url || target.actorId }, remediation));
     }
   }
 
   const filteredFindings = filterByChecks(findings);
   const includePassing = input.includePassingChecks !== false;
   const datasetFindings = includePassing ? filteredFindings : filteredFindings.filter(f => f.status !== 'pass');
-  const reportFindings = datasetFindings;
   for (const item of datasetFindings) await Actor.pushData(item);
 
   await Actor.setValue('results.json', filteredFindings, { contentType: 'application/json' });
-  if ((input.exportFormats || []).includes('summary')) await Actor.setValue('SUMMARY.md', createSummary(reportFindings), { contentType: 'text/markdown' });
-  if ((input.exportFormats || []).includes('sarif')) await Actor.setValue('results.sarif', createSarif(reportFindings), { contentType: 'application/sarif+json' });
-  if ((input.exportFormats || []).includes('junit')) await Actor.setValue('junit.xml', createJUnit(reportFindings), { contentType: 'application/xml' });
-
-  await Actor.charge({ eventName: 'audit-complete' }).catch(() => {});
+  if ((input.exportFormats || []).includes('summary')) await Actor.setValue('SUMMARY.md', createSummary(datasetFindings), { contentType: 'text/markdown' });
+  if ((input.exportFormats || []).includes('sarif')) await Actor.setValue('results.sarif', createSarif(datasetFindings), { contentType: 'application/sarif+json' });
+  if ((input.exportFormats || []).includes('junit')) await Actor.setValue('junit.xml', createJUnit(datasetFindings), { contentType: 'application/xml' });
 
   await Actor.setValue('OUTPUT', {
     summary: 'SUMMARY.md',

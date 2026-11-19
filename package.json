@@ -9,7 +9,8 @@
     "start": "node src/main.js",
     "test": "node --test test/*.test.js",
     "build": "node scripts/build-check.js",
-    "check": "npm test && npm run build"
+    "validate:schema": "apify validate-schema .actor/input_schema.json",
+    "check": "npm run validate:schema && npm test && npm run build"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -23,5 +24,8 @@
   },
   "overrides": {
     "basic-ftp": "6.2.4"
+  },
+  "devDependencies": {
+    "apify-cli": "^1.13.0"
   }
 }

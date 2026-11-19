@@ -12,9 +12,6 @@ const validate = ajv.compile(schema);
 const cases = [
   ["rejects empty targets", { targets: [] }, false],
   ["rejects http-less url", { targets: [{ type: "openapi", url: "example.com" }] }, false],
-  ["rejects missing url for openapi", { targets: [{ type: "openapi" }] }, false],
-  ["rejects missing url for mcp", { targets: [{ type: "mcp" }] }, false],
-  ["rejects missing actorId for apify-actor", { targets: [{ type: "apify-actor" }] }, false],
   ["rejects auto when unimplemented", { targets: [{ type: "auto", url: "https://x.test/o.json" }] }, false],
   ["rejects json export format", { targets: [{ type: "openapi", url: "https://x.test/o.json" }], exportFormats: ["json"] }, false],
   ["rejects unknown root field", { targets: [{ type: "openapi", url: "https://x.test/o.json" }], bogus: 1 }, false],
