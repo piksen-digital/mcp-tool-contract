@@ -48,7 +48,14 @@ test("results.json and OUTPUT use filteredFindings", () => {
   assert.match(src, /const shouldFail = .*filteredFindings\.some/);
 });
 
+test("failOn defaults to none and audit findings only fail when enabled", () => {
+  assert.match(src, /const failThreshold = input\.failOn \?\? 'none'/);
+  assert.match(src, /failThreshold !== 'none' && filteredFindings\.some/);
+  assert.match(src, /await Actor\.fail\(error\)/);
+});
+
 test("schema keeps checks and proxyConfiguration as documented fields", () => {
   assert.ok(schema.properties.checks, "checks must exist in schema");
   assert.ok(schema.properties.proxyConfiguration, "proxyConfiguration must exist in schema");
+  assert.equal(schema.properties.failOn.default, "none");
 });

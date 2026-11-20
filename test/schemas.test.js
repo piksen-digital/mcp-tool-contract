@@ -23,3 +23,10 @@ test('all JSON schemas are valid JSON', () => {
 test('runtime entrypoint exists', () => {
   assert.ok(fs.existsSync(new URL('src/main.js', root)));
 });
+
+test('failOn defaults to none in both Actor input schemas', () => {
+  const actor = JSON.parse(fs.readFileSync(new URL('.actor/actor.json', root), 'utf8'));
+  const inputSchema = JSON.parse(fs.readFileSync(new URL('.actor/input_schema.json', root), 'utf8'));
+  assert.equal(actor.inputSchema.properties.failOn.default, 'none');
+  assert.equal(inputSchema.properties.failOn.default, 'none');
+});

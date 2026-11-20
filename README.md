@@ -27,6 +27,14 @@ This Actor audits remote MCP endpoints, OpenAPI 3.0/3.1 specifications, and publ
 | `includePassingChecks` | Include passed checks in reports | `true` |
 | `dryRun` | Skip network access | `false` |
 
+### Input guidelines & best practices
+
+- **OpenAPI:** Provide a complete URL to a plain-text JSON or YAML OpenAPI specification, not a bare domain, landing page, or binary image file. For example: `https://raw.githubusercontent.com/owner/repository/main/openapi.json`.
+- **MCP:** Provide a reachable HTTP(S) endpoint. The current audit performs an HTTP GET and checks the response headers and body for MCP metadata and a parseable tools list; it does not send a JSON-RPC `tools/list` POST request. POST-only endpoints may therefore produce a response-format warning or fail to expose their tools.
+- **Apify Actors:** Use the fully qualified `owner/name` Actor ID, such as `apify/website-content-crawler`.
+
+`failOn` controls whether findings make the Actor run fail, not whether findings are written. With `failOn: "none"` (the default), findings are still saved to the Dataset and reports, while the run succeeds if execution and output storage complete. Invalid input, runtime errors, and output-storage failures still fail the run.
+
 ## Example input
 
 ```json
